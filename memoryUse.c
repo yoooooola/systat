@@ -36,11 +36,11 @@ struct calinfo {
 }; // structure saves calculating result using meminfo
 
 struct statminfo {
-	int size;
-	int resident;
-	int share;
-	int text;
-	int data;
+    int size;
+    int resident;
+    int share;
+    int text;
+    int data;
 }; // structure saves statm variables
 
 int checkM = 0; // check -m option
@@ -58,107 +58,108 @@ unsigned int getPID(char *); // get pid from process name
 void getStatm(struct statminfo *, unsigned int); // get /proc/pid/statm
 void printStatm(struct statminfo, char); // print statm info
 
+
 int main(int ac, char *av[]) {
     
-	int count = 1;
+    int count = 1;
     
     if(ac > 1) {
         while(count < ac) {
-
+            
             if(av[count][0] == '-') { // check option
-
+                
                 if(av[count][1] == 'm') checkM = 1; // option present mb
-
-            	if(av[count][1] == 'p') {
-			checkP = 1; // option provide process name as input
-			processName = av[count+1];	 
-		}
-
-		count++;
-	    }		
+                
+                if(av[count][1] == 'p') {
+                    checkP = 1; // option provide process name as input
+                    processName = av[count+1];
+                }
+                
+                count++;
+            }
         }
     }
     
     struct meminfo m;
     struct calinfo c;
     struct statminfo s;
-	unsigned int pid;    
-
-//	for debug
-//	printf("pName: %s, checkP: %d, checkM: %d\n", processName, checkP, checkM);
-
-    	if(checkP == 0) {
-    	
-		// get memory info
-    		getMemory(&m);
+    unsigned int pid;
     
-    		// caculate using memory info
-    		calMemory(m, &c);
+    //      for debug
+    //      printf("pName: %s, checkP: %d, checkM: %d\n", processName, checkP, checkM);
     
-    		// print memory info
-    		if(checkM == 1) printMemory(m, c, 'm');
-    		else printMemory(m, c, 'k'); // basic option is kilobyte
+    if(checkP == 0) {
+        
+        // get memory info
+        getMemory(&m);
+        
+        // caculate using memory info
+        calMemory(m, &c);
+        
+        // print memory info
+        if(checkM == 1) printMemory(m, c, 'm');
+        else printMemory(m, c, 'k'); // basic option is kilobyte
+        
+        return 0;
+    }
     
-    		return 0;
-	}
-
-	else { // get process name as input
-
-		pid = getPID(processName);
-		printf("%d", pid);
-		getStatm(&s, pid);
-	
-		if(checkM == 1) printStatm(s, 'm');
-		else printStatm(s, 'k');
-	}
-
+    else { // get process name as input
+        
+        pid = getPID(processName);
+        printf("%d", pid);
+        getStatm(&s, pid);
+        
+        if(checkM == 1) printStatm(s, 'm');
+        else printStatm(s, 'k');
+    }
+    
 }
 
 void printStatm(struct statminfo s, char option) {
-
-	red();
-	printf("\nMemory of ");
-	blue();
-	printf("%s", processName);
-	red();
-	printf(" ↓\n\n");
-
-	reset();
-	if(option == 'k') {
-		printf("Size: %d\n", s.size);
-		printf("Size(not swap): %d\n", s.resident);
-		printf("Share: %d\n", s.share);
-		printf("Data(data + stack): %d\n", s.data);
-	}
-
-	else if(option == 'm') {
-		printf("Size: %d\n", (s.size/BUFSIZE));
-                printf("Size(not swap): %d\n", (s.resident/BUFSIZE));
-                printf("Share: %d\n", (s.share/BUFSIZE));
-                printf("Data(data + stack): %d\n", (s.data/BUFSIZE));
-	}
-	
-	return;
+    
+    red();
+    printf("\nMemory of ");
+    blue();
+    printf("%s", processName);
+    red();
+    printf(" ↓\n\n");
+    
+    reset();
+    if(option == 'k') {
+        printf("Size: %d\n", s.size);
+        printf("Size(not swap): %d\n", s.resident);
+        printf("Share: %d\n", s.share);
+        printf("Data(data + stack): %d\n", s.data);
+    }
+    
+    else if(option == 'm') {
+        printf("Size: %d\n", (s.size/BUFSIZE));
+        printf("Size(not swap): %d\n", (s.resident/BUFSIZE));
+        printf("Share: %d\n", (s.share/BUFSIZE));
+        printf("Data(data + stack): %d\n", (s.data/BUFSIZE));
+    }
+    
+    return;
 }
 
 void getStatm(struct statminfo *s, unsigned int pid) {
-// stores each word in meminfo file
+    // stores each word in meminfo file
     char buffer[BUFSIZE] = "";
     char *fileName;
     char processId[255];
-
+    
     int bin;
-
+    
     strcat(fileName, "/proc/");
     sprintf(processId, "%d", pid);
     strcat(fileName, processId);
     strcat(fileName, "/statm");
-
+    
     
     // open file /proc/pid/statm
     FILE* file = fopen(fileName, "r");
     int count = 0;
-
+    
     // read the file and save into structure
     while (fscanf(file, " %1023s", buffer) == 1) {
         
@@ -177,9 +178,9 @@ void getStatm(struct statminfo *s, unsigned int pid) {
         if (count == 5)
             fscanf(file, "%d", &(s->data));
         
-	if (count == 4 || count == 6) fscanf(file, "%d", &bin);
+        if (count == 4 || count == 6) fscanf(file, "%d", &bin);
         count++;
-	
+        
     }
     
     fclose(file);
@@ -188,48 +189,48 @@ void getStatm(struct statminfo *s, unsigned int pid) {
 }
 
 unsigned int getPID(char *pName) {
-
-	DIR *d;
-	struct dirent *dirEntry;
-	char dirName[255];
-	char targetName[255];
-	char exeLink[255];
-	int targetPid, pid = 0;
-
-	d = opendir("/proc/");
-	
-	while((dirEntry = readdir(d)) != NULL) {
-	
-		if(strspn(dirEntry->d_name, "0123456789") == strlen(dirEntry->d_name)) {
-
-			// get full path of dir
-			strcpy(dirName, "/proc/");
-			strcat(dirName, dirEntry->d_name);
-			strcat(dirName, "/");
-			
-			exeLink[0] = 0;
-			strcat(exeLink, dirName);
-			strcat(exeLink, "exe");
-			targetPid = readlink(exeLink, targetName, sizeof(targetName)-1);
-
-			if(targetPid > 0) {
-				
-				targetName[targetPid] = 0;
-			
-				if(strstr(targetName, pName) != NULL) {
-					
-					pid = atoi(dirEntry->d_name);
-					closedir(d);
-
-					return pid;
-				}
-			}
-		}
-	}
-	closedir(d);
-
-	return pid;
-
+    
+    DIR *d;
+    struct dirent *dirEntry;
+    char dirName[255];
+    char targetName[255];
+    char exeLink[255];
+    int targetPid, pid = 0;
+    
+    d = opendir("/proc/");
+    
+    while((dirEntry = readdir(d)) != NULL) {
+        
+        if(strspn(dirEntry->d_name, "0123456789") == strlen(dirEntry->d_name)) {
+            
+            // get full path of dir
+            strcpy(dirName, "/proc/");
+            strcat(dirName, dirEntry->d_name);
+            strcat(dirName, "/");
+            
+            exeLink[0] = 0;
+            strcat(exeLink, dirName);
+            strcat(exeLink, "exe");
+            targetPid = readlink(exeLink, targetName, sizeof(targetName)-1);
+            
+            if(targetPid > 0) {
+                
+                targetName[targetPid] = 0;
+                
+                if(strstr(targetName, pName) != NULL) {
+                    
+                    pid = atoi(dirEntry->d_name);
+                    closedir(d);
+                    
+                    return pid;
+                }
+            }
+        }
+    }
+    closedir(d);
+    
+    return pid;
+    
 }
 
 void printMemory(struct meminfo m, struct calinfo c, char option) {
@@ -350,4 +351,3 @@ void getMemory(struct meminfo* m) {
     
     return;
 }
-
