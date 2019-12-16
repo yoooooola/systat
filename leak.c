@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #define oops(m,x) { perror(m); exit(x);}
 
 struct pro_info{
@@ -76,9 +77,12 @@ int main(){
 }
 
 void* make_copy(void *args)
-{
+{	
 	int temp = 0;
-    struct arg_set *arg = args;
+    	struct pro_info *arg = args;
+	char path[30] = "./ps_file/";
+	strcpy(path,arg->name);
+	FILE *fp = fopen("./ps_file/"+arg->pid
         return NULL;
 }
 

@@ -23,20 +23,31 @@ struct meminfo {
 
 struct calinfo {
 	int used;
-	int bufCache;
+//	int bufCache;
 	int swapUsed;
 	double nomMem; // nomial memory usage ratio
 	double actMem; // actual memory usage ratio
 }; // structure saves calculating result using meminfo
+
+int checkM = 0;
 
 void getMemory(struct meminfo *); // get memory info
 void calMemory(struct meminfo , struct calinfo *); // caculate essential info using mem info
 void red(); // bold red colored text
 void blue(); // bold blue colored text
 void reset(); // reset all text conf
-void printMemory(struct meminfo, struct calinfo); // print memory info to screen
+void printMemory(struct meminfo, struct calinfo, char); // print memory info to screen
 
-int main() {
+int main(int ac, char *av[]) {
+
+
+	if(ac > 1) {
+		while(--ac) {
+			if(av[ac][0] == '-') { // check option
+				if(av[ac][1] == 'm') checkM = 1; // option present mb
+			}
+		}
+	}
 
 	struct meminfo m;
 	struct calinfo c;
@@ -48,27 +59,44 @@ int main() {
 	calMemory(m, &c);
 
 	// print memory info
-	printMemory(m, c);
+	if(checkM == 1) printMemory(m, c, 'm');
+	else printMemory(m, c, 'k'); // basic option is kilobyte
 
 	return 0;
 }
 
-void printMemory(struct meminfo m, struct calinfo c) {
+void printMemory(struct meminfo m, struct calinfo c, char option) {
 
 	red();
 	printf("\nMemory ↓\n\n");
 
 	reset();
-	printf("Total: %d \t Used: %d\n", m.memTotal, c.used);
-	printf("Free: %d \t Available: %d\n\n", m.memFree, m.memAvailable);
-	printf("Shared Memory: %d\n", m.sharedMem);
-	printf("Buffer/Cache: %d\n\n", c.bufCache);
+	
+	if(option == 'k') { // present with kilobyte
+		printf("Total: %d \t Used: %d\n", m.memTotal, c.used);
+		printf("Free: %d \t Available: %d\n\n", m.memFree, m.memAvailable);
+		printf("Shared Memory: %d\n", m.sharedMem);
+		printf("Buffer: %d\n", m.buffers);
+		printf("Cache: %d\n\n", m.cached);
+	}
+
+	else if(option == 'm') { // megabyte
+        	printf("Total: %d \t Used: %d\n", (m.memTotal/BUFSIZE), (c.used/BUFSIZE));
+                printf("Free: %d \t Available: %d\n\n", (m.memFree/BUFSIZE), (m.memAvailable/BUFSIZE));
+                printf("Shared Memory: %d\n", (m.sharedMem/BUFSIZE));
+                printf("Buffer: %d\n", (m.buffers/BUFSIZE));
+                printf("Cache: %d\n\n", (m.cached/BUFSIZE));
+	}
 
 	red();
         printf("Swap ↓\n\n");
 
 	reset();
-	printf("Total: %d\n Used: %d\n Free: %d\n\n", m.swapTotal, c.swapUsed, m.swapFree);
+	
+	if(option == 'k')
+		printf("Total: %d\n Used: %d\n Free: %d\n\n", m.swapTotal, c.swapUsed, m.swapFree);
+	else if(option == 'm')
+		printf("Total: %d\n Used: %d\n Free: %d\n\n", (m.swapTotal/BUFSIZE), (c.swapUsed/BUFSIZE),(m.swapFree/BUFSIZE));
 
 	blue();
 	printf("Nomial Memory Usage : ");
@@ -101,7 +129,7 @@ void calMemory(struct meminfo m, struct calinfo *c) {
 	
 	// used = total - free
 	c->used = (m.memTotal) - (m.memFree);
-	c->bufCache = (m.cached) + (m.buffers);
+//	c->bufCache = (m.cached) + (m.buffers);
 	c->swapUsed = (m.swapTotal) - (m.swapFree);
 	
 	// caculate nomial memory usage ratio
