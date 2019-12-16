@@ -8,6 +8,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+void getMemory(int *, int *, int *, int *);
+
+int main() {
+        int currRealMem, peakRealMem, currVirtMem, peakVirtMem;
+
+        getMemory(&currRealMem, &peakRealMem, &currVirtMem, &peakVirtMem);
+
+        printf("MemTotal : %d\n", currRealMem);
+        printf("MemFree : %d\n", peakRealMem);
+        printf("MemAvailable : %d\n", currVirtMem);
+        printf("Cached : %d\n", peakVirtMem);
+
+        return 0;
+}
+
 void getMemory(int* currRealMem, int* peakRealMem,
     int* currVirtMem, int* peakVirtMem) {
 
@@ -34,17 +49,4 @@ void getMemory(int* currRealMem, int* peakRealMem,
         }
     }
     fclose(file);
-}
-
-int main() {
-	int currRealMem, peakRealMem, currVirtMem, peakVirtMem;
-
-	getMemory(&currRealMem, &peakRealMem, &currVirtMem, &peakVirtMem);
-
-	printf("MemTotal : %d\n", currRealMem);
-	printf("MemFree : %d\n", peakRealMem);
-	printf("MemAvailable : %d\n", currVirtMem);
-	printf("Cached : %d\n", peakVirtMem);
-
-	return 0;
 }
