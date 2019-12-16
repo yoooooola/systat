@@ -18,7 +18,7 @@
 #define oops(m,x) { perror(m); exit(x);}
 #define MAX_LEN 100
 
-void make_copy(int pid, char* when);
+int make_copy(int pid, char* when);
 void* first_check(void *args);
 void* check_leak(void *args);
 
@@ -79,14 +79,31 @@ int main(){
     fclose(fp);
 
 //-------------------------- thread starts -----------------------------
+/*	
+	int idx = 0;
+	for ( int i = 0 ; i < num_pro ; i++ ){
+		idx = 0;
+		struct pro_info *temp = &pro[i];
+		make_copy(temp->pid,"_prev");
+	}	
+	
+	printf("Analyzing....");
+	sleep(5);
+
+	for ( int i = 0 ; i < num_pro ; i++ ){
+		struct pro_info *temp = &pro[i];
+		make_copy(temp->pid,"_curr");
+	}*/
    
     // thread 생성
+
+	void *tret = NULL;
     pthread_t threads[num_pro];
     for ( int i = 0 ; i < num_pro ; i++ )
         pthread_create(&threads[i],NULL, first_check,(void *)&pro[i]);
     
     for ( int i = 0 ; i < num_pro ; i++ )
-       	pthread_join(threads[i],NULL);
+       	pthread_join(threads[i],&tret);
 
 	sleep(5);
 
@@ -94,22 +111,25 @@ int main(){
         pthread_create(&threads[i],NULL, check_leak,(void *)&pro[i]);
 
     for ( int i = 0 ; i < num_pro ; i++ )
-        pthread_join(threads[i],NULL);
-    
+        pthread_join(threads[i],&tret);
+  
 	return 0;
 }
 
 void* first_check(void *args)
 {	
 	struct pro_info *arg = args;
-	make_copy(arg->pid,"_prev");
+	static int retval = 999;
+	int a = make_copy(arg->pid,"_prev");
+	if ( a == 9 ) pthread_exit((void *) &retval);
 	return NULL;
 }
 
 void* check_leak(void *args)
 {
 	// 5초 후 파일의 변화 탐지하기
-	int pid;
+	int pid,fd;
+	static int retval = 999;
 	struct pro_info *arg = args;
         char path2[50];
         sprintf(path2,"./ps_file/%d%s",arg->pid,"_prev");
@@ -118,16 +138,19 @@ void* check_leak(void *args)
 	sprintf(path1,"./ps_file/%d%s",arg->pid,"_curr");
 
 	// 두번째 copy 만들기
-        make_copy(arg->pid,"_curr");
+        int a = make_copy(arg->pid,"_curr");
+	if ( a == 9 ) pthread_exit((void *) &retval);
 	if (( pid = fork()) == -1){
                 oops("fork error",1);
         }
 
         if ( pid == 0){
                 close(1);
-		//fd = creat("result",0644);
+		char name[50];
+		sprintf(name,"./ps_file/result_%d",arg->pid);
+		fd = creat(name,0644);
                 // 차이가 뭔가요?
-		execlp("diff","diff","-u",path1,path2,NULL);
+		execlp("diff","diff",path1,path2,NULL);
                 oops("execlp error",2);
         }
 
@@ -139,7 +162,7 @@ void* check_leak(void *args)
         return NULL;
 }
 
-void make_copy(int pid,char* when){
+int make_copy(int pid,char* when){
 	char* line;
         int idx = 0;
         //struct pro_info *arg = args;
@@ -151,22 +174,28 @@ void make_copy(int pid,char* when){
         // ./ps_file/pid_num_prev
         char path2[50];
 	sprintf(path2,"./ps_file/%d%s",pid,when);
-
+	
+	//static int retval = 999;
         // 해당하는 pid의 proc로 접속하기
         // /proc/pid_num/smaps 오픈 경로
-        FILE *fp1 = fopen(path,"r");
+        FILE* fp1 = fopen(path,"r");
+	if ( fp1 == NULL )
+		return 9;
         // 원본 파일 복사해서 쓸 경로
-        FILE *fp2 = fopen(path2,"w");
+        FILE* fp2 = fopen(path2,"w");
 
         // 임시 버퍼
-        line = (char *)malloc(sizeof(char)*MAX_LEN);
+        line = (char *)malloc(sizeof(char)*100);
 
         // 받은거 바로 복사
-        while ( NULL != fgets(line,MAX_LEN,fp1)){
-            printf("%s",line);
+        while ( feof(fp1) ){ 
+	    fgets(line,sizeof(line),fp1);
+	    printf("%s",line);
             idx++;
             fputs(line,fp2);
-        }
-       // close(fp1);
+       } 
+       fclose(fp1);
+	fclose(fp2);
+	return 0;
        // close(fp2);
 }

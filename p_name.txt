@@ -1,7 +1,5 @@
 USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-camper   21102  0.0  0.1  23612  6296 pts/0    Ss+  Dec16   0:01 -bash
-camper   22830  0.0  0.1  22676  5364 pts/1    Ss   Dec16   0:00 -bash
 camper   23042  0.0  0.1  22584  5156 pts/2    Ss+  Dec16   0:00 -bash
-camper   23351  0.0  0.1  22584  5168 pts/3    Ss+  Dec16   0:00 -bash
-camper   23620  0.0  0.0   6392   700 pts/1    S+   00:26   0:00 ./leak
-camper   23621  0.0  0.0  37364  3268 pts/1    R+   00:26   0:00 ps -u
+camper   24185  0.0  0.1  22584  5156 pts/0    Ss   02:39   0:00 -bash
+camper   24282  0.0  0.0   6392   760 pts/0    S+   03:17   0:00 ./leak
+camper   24283  0.0  0.0  37364  3312 pts/0    R+   03:17   0:00 ps -u
