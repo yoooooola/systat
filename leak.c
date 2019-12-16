@@ -51,7 +51,8 @@ int main(){
         struct pro_info *temp = &arg_arr[num_pro];
         temp->name = name;
         temp->pid = p_buf;
-        num_pro++;
+        printf("%s %d\n",name,p_buf);
+	num_pro++;
     }
     fclose(fp);
 
