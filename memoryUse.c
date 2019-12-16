@@ -8,45 +8,150 @@
 #include <stdlib.h>
 #include <string.h>
 
-void getMemory(int *, int *, int *, int *);
+#define BUFSIZE 1024
+
+struct meminfo {
+	int memTotal;
+	int memFree;
+	int memAvailable;
+	int cached;
+	int buffers;
+	int swapTotal;
+	int swapFree;
+	int sharedMem;
+}; // structure saves meminfo variables
+
+struct calinfo {
+	int used;
+	int bufCache;
+	int swapUsed;
+	double nomMem; // nomial memory usage ratio
+	double actMem; // actual memory usage ratio
+}; // structure saves calculating result using meminfo
+
+void getMemory(struct meminfo *); // get memory info
+void calMemory(struct meminfo , struct calinfo *); // caculate essential info using mem info
+void red(); // bold red colored text
+void blue(); // bold blue colored text
+void reset(); // reset all text conf
+void printMemory(struct meminfo, struct calinfo); // print memory info to screen
 
 int main() {
-        int currRealMem, peakRealMem, currVirtMem, peakVirtMem;
 
-        getMemory(&currRealMem, &peakRealMem, &currVirtMem, &peakVirtMem);
+	struct meminfo m;
+	struct calinfo c;
 
-        printf("MemTotal : %d\n", currRealMem);
-        printf("MemFree : %d\n", peakRealMem);
-        printf("MemAvailable : %d\n", currVirtMem);
-        printf("Cached : %d\n", peakVirtMem);
+	// get memory info
+	getMemory(&m);
 
-        return 0;
+	// caculate using memory info
+	calMemory(m, &c);
+
+	// print memory info
+	printMemory(m, c);
+
+	return 0;
 }
 
-void getMemory(int* currRealMem, int* peakRealMem,
-    int* currVirtMem, int* peakVirtMem) {
+void printMemory(struct meminfo m, struct calinfo c) {
 
-    // stores each word in meminfo file
-    char buffer[1024] = "";
+	red();
+	printf("\nMemory ↓\n\n");
 
-    // linux file contains memory info
-    FILE* file = fopen("/proc/meminfo", "r");
+	reset();
+	printf("Total: %d \t Used: %d\n", m.memTotal, c.used);
+	printf("Free: %d \t Available: %d\n\n", m.memFree, m.memAvailable);
+	printf("Shared Memory: %d\n", m.sharedMem);
+	printf("Buffer/Cache: %d\n\n", c.bufCache);
 
-    // read the entire file
-    while (fscanf(file, " %1023s", buffer) == 1) {
+	red();
+        printf("Swap ↓\n\n");
 
-        if (strcmp(buffer, "MemTotal:") == 0) {
-            fscanf(file, " %d", currRealMem);
-        }
-        if (strcmp(buffer, "MemFree:") == 0) {
-            fscanf(file, " %d", peakRealMem);
-        }
-        if (strcmp(buffer, "MemAvailable:") == 0) {
-            fscanf(file, " %d", currVirtMem);
-        }
-        if (strcmp(buffer, "Cached:") == 0) {
-            fscanf(file, " %d", peakVirtMem);
-        }
-    }
-    fclose(file);
+	reset();
+	printf("Total: %d\n Used: %d\n Free: %d\n\n", m.swapTotal, c.swapUsed, m.swapFree);
+
+	blue();
+	printf("Nomial Memory Usage : ");
+
+	reset();
+	printf("%.2f%%\n", c.nomMem);
+	
+	blue();
+	printf("Actual Memory Usage : ");
+	
+	reset();
+	printf(" %.2f%%\n\n", c.actMem);
+
+	return;	
+}
+
+void red() {
+	printf("\033[1;31m");
+}
+
+void blue() {
+	printf("\033[1;34m");
+}
+
+void reset() {
+	printf("\033[0m");
+}
+
+void calMemory(struct meminfo m, struct calinfo *c) {
+	
+	// used = total - free
+	c->used = (m.memTotal) - (m.memFree);
+	c->bufCache = (m.cached) + (m.buffers);
+	c->swapUsed = (m.swapTotal) - (m.swapFree);
+	
+	// caculate nomial memory usage ratio
+	c->nomMem = (double)(c->used) / (double)(m.memTotal);
+	c->nomMem = (c->nomMem) * 100; // for presenting by percentage
+	
+	// caculate actual memory usage ratio
+	c->actMem = (double)((m.memTotal) - (m.memAvailable)) / (double)(m.memTotal);
+	c->actMem = (c->actMem) * 100;
+
+	return;
+}
+
+void getMemory(struct meminfo* m) {
+
+   	// stores each word in meminfo file
+    	char buffer[BUFSIZE] = "";
+
+    	// open file contains memory info
+    	FILE* file = fopen("/proc/meminfo", "r");
+
+    	// read the file and save into structure
+    	while (fscanf(file, " %1023s", buffer) == 1) {
+
+        	if (strcmp(buffer, "MemTotal:") == 0)
+        		fscanf(file, " %d", &(m->memTotal));
+        
+        	if (strcmp(buffer, "MemFree:") == 0)
+        		fscanf(file, " %d", &(m->memFree));
+        
+        	if (strcmp(buffer, "MemAvailable:") == 0)
+        		fscanf(file, " %d", &(m->memAvailable));
+  
+        	if (strcmp(buffer, "SwapTotal:") == 0)
+        		fscanf(file, " %d", &(m->swapTotal));
+
+		if (strcmp(buffer, "SwapFree:") == 0)
+			fscanf(file, " %d", &(m->swapFree));
+	
+		if (strcmp(buffer, "Cached:") == 0)
+			fscanf(file, " %d", &(m->cached));
+
+		if (strcmp(buffer, "Buffers:") == 0)
+			fscanf(file, " %d", &(m->buffers));
+
+		if (strcmp(buffer, "Shmem:") == 0)
+			fscanf(file, " %d", &(m->sharedMem));
+    	}	
+
+	fclose(file);
+
+	return;
 }
