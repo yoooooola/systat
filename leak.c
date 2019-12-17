@@ -141,6 +141,7 @@ int main(int argc, char *argv[]){
         void *tret = NULL;
         pthread_t threads[num_pro];
 
+        // ./leak -p에 대한 실행
         if ( flags == 0 ){
         for ( int i = 0 ; i < num_pro ; i++ )
                 pthread_create(&threads[i],NULL, first_check,(void *)&pro[i]);
@@ -163,7 +164,7 @@ int main(int argc, char *argv[]){
                 printf("%c[1;36m",27);
                 printf("curr 파일 save 완료...\n");
                 printf("%c[0m",27);
-// 결과 출력
+                // 결과 출력
                 printf("%c[1;37m",27);
                 printf("\nthese are diffrence of memory. the blank line is no difference");
                 printf("\n# of process is %d\n",num_pro);
@@ -200,6 +201,7 @@ void* first_check(void *args)
         return NULL;
 }
 
+// ./leak -c에 대한 쓰레드 함수
 void* check_leak(void *args)
 {
         // 5초 후 파일의 변화 탐지하기
