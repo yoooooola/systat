@@ -1,6 +1,6 @@
-# systat
+# smapshot
 
-systat is a program that combines system resource monitor and statistics.
+smapshot is a program monitoring memory usage and finding memory leak
 
 ## How to use
 
