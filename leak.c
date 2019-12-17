@@ -225,7 +225,7 @@ void* check_leak(void *args)
                 sprintf(name,"./%s/result_%d",dirname,arg->pid);
                 fd = creat(name,0644);
                 // 차이가 뭔가요?
-                if ( execlp("diff","diff",path1,path2,NULL) == -1 ){
+                if ( execlp("diff","diff",path2,path1,NULL) == -1 ){
                         perror("이미 종료된 프로세스입니다.\n");
                         pthread_exit((void*) &retval);
                 }
