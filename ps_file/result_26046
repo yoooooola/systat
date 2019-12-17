@@ -1,0 +1,26 @@
+79,80c79,80
+< Rss:                2424 kB
+< Pss:                2424 kB
+---
+> Rss:                2420 kB
+> Pss:                2420 kB
+84,86c84,86
+< Private_Dirty:      2424 kB
+< Referenced:         2424 kB
+< Anonymous:          2424 kB
+---
+> Private_Dirty:      2420 kB
+> Referenced:         2420 kB
+> Anonymous:          2420 kB
+441c441
+< Pss:                  68 kB
+---
+> Pss:                  67 kB
+840c840
+< Pss:                 118 kB
+---
+> Pss:                 126 kB
+1600c1600
+< Pss:                  10 kB
+---
+> Pss:                  11 kB

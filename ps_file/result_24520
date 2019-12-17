@@ -1,0 +1,18 @@
+441,442c441,442
+< Pss:                 111 kB
+< Shared_Clean:        464 kB
+---
+> Pss:                 130 kB
+> Shared_Clean:        448 kB
+444c444
+< Private_Clean:         8 kB
+---
+> Private_Clean:        24 kB
+460c460
+< Pss:                 138 kB
+---
+> Pss:                 149 kB
+707c707
+< Pss:                  10 kB
+---
+> Pss:                  12 kB

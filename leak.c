@@ -15,24 +15,46 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <pthread.h>
+#include <errno.h>
+
 #define oops(m,x) { perror(m); exit(x);}
+#define here(x) { return x;}
 #define MAX_LEN 100
 
 int make_copy(int pid, char* when);
 void* first_check(void *args);
 void* check_leak(void *args);
+int print_result(int pid);
 
 struct pro_info{
 	char* name;
 	int pid;
 };
 
-int main(){
+static char dirname[50];
+
+int main(int argc, char *argv[]){
+
+	srand(time(NULL));
+	int random = rand()%10000;
+	sprintf(dirname,"ps_file");	
 
 	struct pro_info pro[100];
 	int pid,fd,num_pro=0;
-
+	int flags = 999;
+	if ( argc != 2 ){
+		fprintf(stderr,"usage : ./leak [option]. options are -p or -c");
+	}
+	
 	fd = 0;
+	if ( strcmp(argv[1],"-p") == 0)
+		flags = 0;
+	else if (strcmp(argv[1], "-c") == 0 )
+		flags = 1;
+	else{
+		fprintf(stderr,"Please type option.");
+		exit(1);
+	}
 
 	// ps -u 커맨드 실행 후 파일로 저장
 	if ( (pid = fork()) == -1){
@@ -71,7 +93,7 @@ int main(){
 	struct pro_info *temp = &pro[num_pro]; 
         temp->name = name;
         temp->pid = p_buf;
-        printf("%s %d\n",temp->name,temp->pid);
+        //printf("%s %d\n",temp->name,temp->pid);
 	num_pro++;
 	prev = p_buf;
 	//if ( temp != '\n') fscanf(fp,"%s",trash[0]);
@@ -79,40 +101,64 @@ int main(){
     fclose(fp);
 
 //-------------------------- thread starts -----------------------------
-/*	
+/* // non thread version
 	int idx = 0;
+	
+	if ( flags == 0){
 	for ( int i = 0 ; i < num_pro ; i++ ){
 		idx = 0;
 		struct pro_info *temp = &pro[i];
 		make_copy(temp->pid,"_prev");
 	}	
-	
-	printf("Analyzing....");
+	}
+	else if (flags == 1){
+	printf("Analyzing....\n");
 	sleep(5);
-
 	for ( int i = 0 ; i < num_pro ; i++ ){
 		struct pro_info *temp = &pro[i];
 		make_copy(temp->pid,"_curr");
-	}*/
-   
+	}
+   	}
+*/
     // thread 생성
-
-	void *tret = NULL;
+	
+    void *tret = NULL;
     pthread_t threads[num_pro];
+
+if ( flags == 0 ){
     for ( int i = 0 ; i < num_pro ; i++ )
         pthread_create(&threads[i],NULL, first_check,(void *)&pro[i]);
     
     for ( int i = 0 ; i < num_pro ; i++ )
        	pthread_join(threads[i],&tret);
 
-	sleep(5);
+	
+	printf("prev 파일 save 완료...\n");
+}
 
+else if ( flags == 1){
     for ( int i = 0 ; i < num_pro ; i++ )
         pthread_create(&threads[i],NULL, check_leak,(void *)&pro[i]);
 
     for ( int i = 0 ; i < num_pro ; i++ )
         pthread_join(threads[i],&tret);
-  
+	
+	printf("curr 파일 save 완료...\n");
+
+	printf("\nthese are diffrence of memory. the blank line is no difference");
+	printf("\n# of process is %d\n",num_pro);
+	for ( int i = 0 ; i < num_pro ; i++ ){
+		struct pro_info *temp = &pro[i];
+	        printf("\n-----------------------------------------------------------------\n");
+        	printf("\n                          pid : %d\n",pid);
+
+		print_result(temp->pid);
+		if ( i == num_pro-1 )
+			printf("\n-----------------------------------------------------------------\n");
+
+	}
+
+}
 	return 0;
 }
 
@@ -132,10 +178,10 @@ void* check_leak(void *args)
 	static int retval = 999;
 	struct pro_info *arg = args;
         char path2[50];
-        sprintf(path2,"./ps_file/%d%s",arg->pid,"_prev");
+        sprintf(path2,"./%s/%d%s",dirname,arg->pid,"_prev");
 
 	char path1[50];
-	sprintf(path1,"./ps_file/%d%s",arg->pid,"_curr");
+	sprintf(path1,"./%s/%d%s",dirname,arg->pid,"_curr");
 
 	// 두번째 copy 만들기
         int a = make_copy(arg->pid,"_curr");
@@ -147,11 +193,13 @@ void* check_leak(void *args)
         if ( pid == 0){
                 close(1);
 		char name[50];
-		sprintf(name,"./ps_file/result_%d",arg->pid);
+		sprintf(name,"./%s/result_%d",dirname,arg->pid);
 		fd = creat(name,0644);
                 // 차이가 뭔가요?
-		execlp("diff","diff",path1,path2,NULL);
-                oops("execlp error",2);
+		if ( execlp("diff","diff",path1,path2,NULL) == -1 ){
+			perror("이미 종료된 프로세스입니다.\n");
+			pthread_exit((void*) &retval);
+                }
         }
 
         if ( pid != 0 ){
@@ -163,8 +211,8 @@ void* check_leak(void *args)
 }
 
 int make_copy(int pid,char* when){
-	char* line;
-        int idx = 0;
+	//char line[100];
+        //int idx = 0;
         //struct pro_info *arg = args;
 
         // /proc/pid_num/smaps
@@ -173,29 +221,48 @@ int make_copy(int pid,char* when){
 
         // ./ps_file/pid_num_prev
         char path2[50];
-	sprintf(path2,"./ps_file/%d%s",pid,when);
+	sprintf(path2,"./%s/%d%s",dirname,pid,when);
 	
-	//static int retval = 999;
-        // 해당하는 pid의 proc로 접속하기
-        // /proc/pid_num/smaps 오픈 경로
-        FILE* fp1 = fopen(path,"r");
-	if ( fp1 == NULL )
-		return 9;
-        // 원본 파일 복사해서 쓸 경로
-        FILE* fp2 = fopen(path2,"w");
 
-        // 임시 버퍼
-        line = (char *)malloc(sizeof(char)*100);
+	int p,fd;
+        if ( (p = fork()) == -1){
+                oops("fork error",1);
+        }
 
-        // 받은거 바로 복사
-        while ( feof(fp1) ){ 
-	    fgets(line,sizeof(line),fp1);
-	    printf("%s",line);
-            idx++;
-            fputs(line,fp2);
-       } 
-       fclose(fp1);
-	fclose(fp2);
+        if ( p == 0 ){
+                close(1);
+                fd = creat(path2,0644);
+		if ( execlp("cat","cat",path,NULL) == -1){
+			perror("이미 종료된 프로세스입니다.\n");
+                	return 9;
+		}
+        }
+
+        if ( p != 0 ){
+                wait(NULL);
+        }
 	return 0;
-       // close(fp2);
+}
+
+int print_result(int pid){
+	
+	char path[50];
+	sprintf(path,"ps_file/result_%d",pid);
+	printf("\n");
+	int p,fd;
+	if ( (p = fork()) == -1){
+		oops("fork error",1);
+	}
+
+	if ( p == 0 ){
+		execlp("cat","cat",path,NULL);
+		oops("exec",1);
+	}
+	if ( p != 0){
+		wait(NULL);
+	}
+
+	printf("\n");
+	printf("\n");
+	return 0;
 }
