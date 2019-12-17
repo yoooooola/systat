@@ -11,7 +11,7 @@ $./memoryUse
 
 $./memoryUse -p bash
 
-#./memoryUse -p bash -m
+$./memoryUse -p bash -m
 
 ### memory leak
 $ gcc leak.c -lpthread -o leak
@@ -22,4 +22,4 @@ $ mkdir ps_file
 
 $./leak -p
 
-#./leak -c
+$./leak -c
