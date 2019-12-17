@@ -1,11 +1,26 @@
-// 프로그램 실행 시
-// ps -u 커맨드로 현재 로그인된 pts들의 PID 가져오기
-// 구한 PID로 /proc/PID/smaps 파일 복사본 만들기 ( PID_prev )
-// 5초 뒤에 PID_cur 파일 복사본 만들기
-// 7ffe367c2000-7ffe367c4000 -> 주소. 두개 주소앞에 0x 붙여서
-// 아래 커맨드로 실행
-// dump memory ./dump_outputfile.dump 0x2b3289290000 0x2b3289343000
-// 비교한뒤 strings 나 hexdump -C 사용하여 dump 파일 표시하기
+/*
+	먼저 pipe를 통해 ps -u 커맨드로 현재 로그인된 pts들의 PID들을 저장한다.
+	
+	사용자가 ./leak -p로 접근했을때는 현재 활성화된 PID들의 smaps파일을 저장한다.
+	이때, 각 PID에 대한 smaps 파일의 저장은 pthread를 사용한다.
+	smaps 파일들은 ps_file 폴더내에 PID_prev 형태로 저장된다.
+	
+	일정시간동안 사용자가 메모리를 사용하거나, leak이 발생하는 시간까지 기다린후에
+	./leak -c로 접근하여 현재 활성화된 PID들을 다시 저장한뒤,
+	그 PID들에 대한 smaps 파일을 저장한다.
+	이때 smaps 파일들은 ps_file폴더내에 PID_curr 형태로 저장된다.
+	
+	그리고 만들어진 PID_prev와 PID_curr 파일을 pipe와 pthread를 사용하여
+	서로 파일의 차이점을 찾는다. 이때 diff 커맨드를 파이프를 통해 사용한뒤
+	결과를 ps_file 폴더내에 result_PID 형태로 저장한다.
+	
+	최종적으로 ./leak -c를 실행했을떄 ps -u에 활성화되있던 모든 PID들에 대해서
+	smaps파일의 변화유무를 보여준다.
+	< : prev 파일정보
+	> : curr 파일정보
+
+	메모리 변화를 통해서 어떤 프로세스에서 leak이 발생했는지 확인한다.
+*/
 #include <fcntl.h>
 #include <pthread.h>
 #include <time.h>
@@ -72,33 +87,31 @@ int main(int argc, char *argv[]){
 		wait(NULL);
 	}
 
-// p_name 파일 읽기
-    FILE *fp = fopen("p_name.txt","r");
-    int p_buf;
-    char *name = "";
-    name = malloc(sizeof(char *)*100);
-    char* trash[12];
-    char temp;
-    for ( int i = 0 ; i < 12 ; i++ ){
-	trash[i] = malloc(sizeof(char *)*100);
-    }
+	// p_name 파일 읽기 / 구조체에 저장
+    	FILE *fp = fopen("p_name.txt","r");
+    	int p_buf;
+    	char *name = "";
+    	name = malloc(sizeof(char *)*100);
+    	char* trash[12];
+    	char temp;
+    	for ( int i = 0 ; i < 12 ; i++ ){
+		trash[i] = malloc(sizeof(char *)*100);
+    	}
 	    
-    fscanf(fp,"%s %s %s %s %s %s %s %s %s %s %s %c",trash[0],trash[1],trash[2],trash[3],
-	trash[4],trash[5],trash[6],trash[7],trash[8],trash[9],trash[10],&temp);
+    	fscanf(fp,"%s %s %s %s %s %s %s %s %s %s %s %c",trash[0],trash[1],trash[2],trash[3],trash[4],trash[5],trash[6],trash[7],trash[8],trash[9],trash[10],&temp);
 
-    int prev = 0;
-    while (EOF != fscanf(fp,"%s %d %s %s %s %s %s %s %s %s %s %c",trash[0],&p_buf,trash[1],
-	trash[2],trash[3],trash[4],trash[5],trash[6],trash[7],trash[8],name,&temp)){
-        if ( prev == p_buf ) continue;
-	struct pro_info *temp = &pro[num_pro]; 
-        temp->name = name;
-        temp->pid = p_buf;
-        //printf("%s %d\n",temp->name,temp->pid);
-	num_pro++;
-	prev = p_buf;
-	//if ( temp != '\n') fscanf(fp,"%s",trash[0]);
-    }
-    fclose(fp);
+    	int prev = 0;
+    	while (EOF != fscanf(fp,"%s %d %s %s %s %s %s %s %s %s %s %c",trash[0],&p_buf,trash[1],trash[2],trash[3],trash[4],trash[5],trash[6],trash[7],trash[8],name,&temp)){
+        	if ( prev == p_buf ) continue;
+		struct pro_info *temp = &pro[num_pro]; 
+        	temp->name = name;
+        	temp->pid = p_buf;
+        	//printf("%s %d\n",temp->name,temp->pid);
+		num_pro++;
+		prev = p_buf;
+		//if ( temp != '\n') fscanf(fp,"%s",trash[0]);
+   	 }
+    	fclose(fp);
 
 //-------------------------- thread starts -----------------------------
 /* // non thread version
@@ -120,55 +133,57 @@ int main(int argc, char *argv[]){
 	}
    	}
 */
-    // thread 생성
-	
-    void *tret = NULL;
-    pthread_t threads[num_pro];
+    	// thread 생성
+    	void *tret = NULL;
+	pthread_t threads[num_pro];
 
-if ( flags == 0 ){
-    for ( int i = 0 ; i < num_pro ; i++ )
-        pthread_create(&threads[i],NULL, first_check,(void *)&pro[i]);
+	// ./leak -p에 대한 실행
+	if ( flags == 0 ){
+    	for ( int i = 0 ; i < num_pro ; i++ )
+        	pthread_create(&threads[i],NULL, first_check,(void *)&pro[i]);
     
-    for ( int i = 0 ; i < num_pro ; i++ )
-       	pthread_join(threads[i],&tret);
+   	 for ( int i = 0 ; i < num_pro ; i++ )
+       		pthread_join(threads[i],&tret);
 
-	printf("%c[1;36m",27);
-	printf("prev 파일 save 완료...\n");
-	printf("%c[0m",27);
-}
-
-else if ( flags == 1){
-    for ( int i = 0 ; i < num_pro ; i++ )
-        pthread_create(&threads[i],NULL, check_leak,(void *)&pro[i]);
-
-    for ( int i = 0 ; i < num_pro ; i++ )
-        pthread_join(threads[i],&tret);
-	
-	printf("%c[1;36m",27);
-	printf("curr 파일 save 완료...\n");
-        printf("%c[0m",27);
-
-	printf("%c[1;37m",27);
-	printf("\nthese are diffrence of memory. the blank line is no difference");
-	printf("\n# of process is %d\n",num_pro);
-	printf("%c[0m",27);
-	
-	for ( int i = 0 ; i < num_pro ; i++ ){
-		struct pro_info *temp = &pro[i];
-	        printf("\n-----------------------------------------------------------------\n");
-        	printf("%c[1;35m",27);
-		printf("\n                          pid : %d\n",pid);
+		printf("%c[1;36m",27);
+		printf("prev 파일 save 완료...\n");
 		printf("%c[0m",27);
-		print_result(temp->pid);
-		if ( i == num_pro-1 )
-			printf("\n-----------------------------------------------------------------\n");
-
 	}
+	// ./leak -c에 대한 실행
+	else if ( flags == 1){
+    		for ( int i = 0 ; i < num_pro ; i++ )
+        		pthread_create(&threads[i],NULL, check_leak,(void *)&pro[i]);
 
-}
+    		for ( int i = 0 ; i < num_pro ; i++ )
+        		pthread_join(threads[i],&tret);
+	
+		printf("%c[1;36m",27);
+		printf("curr 파일 save 완료...\n");
+        	printf("%c[0m",27);
+
+		// 결과 출력
+		printf("%c[1;37m",27);
+		printf("\nthese are diffrence of memory. the blank line is no difference");
+		printf("\n# of process is %d\n",num_pro);
+		printf("%c[0m",27);
+	
+		for ( int i = 0 ; i < num_pro ; i++ ){
+			struct pro_info *temp = &pro[i];
+	        	printf("\n-----------------------------------------------------------------\n");
+        		printf("%c[1;35m",27);
+			printf("\n                          pid : %d\n",pid);
+			printf("%c[0m",27);
+			print_result(temp->pid);
+			if ( i == num_pro-1 )
+				printf("\n-----------------------------------------------------------------\n");
+
+		}	
+
+	}	
 	return 0;
 }
 
+//./leak -p에 대한 쓰레드 함수
 void* first_check(void *args)
 {	
 	struct pro_info *arg = args;
@@ -178,6 +193,7 @@ void* first_check(void *args)
 	return NULL;
 }
 
+// ./leak -c에 대한 쓰레드 함수
 void* check_leak(void *args)
 {
 	// 5초 후 파일의 변화 탐지하기
@@ -217,6 +233,7 @@ void* check_leak(void *args)
         return NULL;
 }
 
+// smaps 파일 복사 함수
 int make_copy(int pid,char* when){
 	//char line[100];
         //int idx = 0;
@@ -251,6 +268,7 @@ int make_copy(int pid,char* when){
 	return 0;
 }
 
+// 결과 출력 함수
 int print_result(int pid){
 	
 	char path[50];
