@@ -132,8 +132,9 @@ if ( flags == 0 ){
     for ( int i = 0 ; i < num_pro ; i++ )
        	pthread_join(threads[i],&tret);
 
-	
+	printf("%c[1;36m",27);
 	printf("prev 파일 save 완료...\n");
+	printf("%c[0m",27);
 }
 
 else if ( flags == 1){
@@ -143,15 +144,21 @@ else if ( flags == 1){
     for ( int i = 0 ; i < num_pro ; i++ )
         pthread_join(threads[i],&tret);
 	
+	printf("%c[1;36m",27);
 	printf("curr 파일 save 완료...\n");
+        printf("%c[0m",27);
 
+	printf("%c[1;37m",27);
 	printf("\nthese are diffrence of memory. the blank line is no difference");
 	printf("\n# of process is %d\n",num_pro);
+	printf("%c[0m",27);
+	
 	for ( int i = 0 ; i < num_pro ; i++ ){
 		struct pro_info *temp = &pro[i];
 	        printf("\n-----------------------------------------------------------------\n");
-        	printf("\n                          pid : %d\n",pid);
-
+        	printf("%c[1;35m",27);
+		printf("\n                          pid : %d\n",pid);
+		printf("%c[0m",27);
 		print_result(temp->pid);
 		if ( i == num_pro-1 )
 			printf("\n-----------------------------------------------------------------\n");
