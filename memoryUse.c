@@ -265,7 +265,7 @@ void printMemory(struct meminfo m, struct calinfo c, char option) {
         printf("Total: %d\n Used: %d\n Free: %d\n\n", (m.swapTotal/BUFSIZE), (c.swapUsed/BUFSIZE),(m.swapFree/BUFSIZE));
     
     blue();
-    printf("Nomial Memory Usage : ");
+    printf("Nominal Memory Usage : ");
     
     reset();
     printf("%.2f%%\n", c.nomMem);
