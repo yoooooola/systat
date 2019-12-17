@@ -21,7 +21,7 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-#define BUFSIZE 256
+#define BUFSIZE 1024
 
 struct meminfo {
     int memTotal;
